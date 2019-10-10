@@ -10,7 +10,6 @@ import UIKit
 import MobileCoreServices
 import MediaWatermark
 import AVFoundation
-import Photos
 
 class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     @IBOutlet weak var resultImageView: UIImageView!
@@ -39,18 +38,15 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
     }
     
     // MARK: - UIImagePickerControllerDelegate
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-// Local variable inserted by Swift 4.2 migrator.
-let info = convertFromUIImagePickerControllerInfoKeyDictionary(info)
-
-        let mediaType = info[convertFromUIImagePickerControllerInfoKey(UIImagePickerController.InfoKey.mediaType)] as! String
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
+        let mediaType = info[UIImagePickerControllerMediaType] as! String
         picker.dismiss(animated: true, completion: nil)
         
         if (mediaType == kUTTypeVideo as String) || (mediaType == kUTTypeMovie as String) {
-            let videoUrl = info[convertFromUIImagePickerControllerInfoKey(UIImagePickerController.InfoKey.mediaURL)] as! URL
+            let videoUrl = info[UIImagePickerControllerMediaURL] as! URL
             processVideo(url: videoUrl)
         } else {
-            let image = info[convertFromUIImagePickerControllerInfoKey(UIImagePickerController.InfoKey.originalImage)] as? UIImage
+            let image = info[UIImagePickerControllerOriginalImage] as? UIImage
             processImage(image: image!)
         }
     }
@@ -76,7 +72,7 @@ let info = convertFromUIImagePickerControllerInfoKeyDictionary(info)
         let secondElement = MediaElement(image: logoImage!)
         secondElement.frame = CGRect(x: 100, y: 100, width: logoImage!.size.width, height: logoImage!.size.height)
         
-        item.add(elements: [firstElement])
+        item.add(elements: [firstElement, secondElement])
         
         let mediaProcessor = MediaProcessor()
         mediaProcessor.processElements(item: item) { [weak self] (result, error) in
@@ -88,40 +84,21 @@ let info = convertFromUIImagePickerControllerInfoKeyDictionary(info)
         resultImageView.image = nil
         
         if let item = MediaItem(url: url) {
-            let logoImage = UIImage(named: "rglogo")?.alpha(0.6)
+            let logoImage = UIImage(named: "rglogo")
             
             let firstElement = MediaElement(image: logoImage!)
-            let logoRatio = logoImage!.size.width / logoImage!.size.height
-            let y = item.size.height - (logoImage!.size.height + 5)
-            firstElement.frame = CGRect(x: 20, y: y, width: item.size.width * 0.306, height: item.size.width * 0.306 / logoRatio)
+            firstElement.frame = CGRect(x: 0, y: 0, width: logoImage!.size.width, height: logoImage!.size.height)
             
-            print("Video: \(item.size.width)x\(item.size.height)")
-            print("width:\(firstElement.frame.width) height:\(firstElement.frame.height)")
-            print("logo: \(item.size.width * 0.306)x\(item.size.width * 0.306 / logoRatio)")
-            print("waterMark: x\(20),y\(y) \(item.size.width * 0.306)x\(item.size.width * 0.306 / logoRatio)")
+            let secondElement = MediaElement(image: logoImage!)
+            secondElement.frame = CGRect(x: 150, y: 150, width: logoImage!.size.width, height: logoImage!.size.height)
             
-//            let secondElement = MediaElement(image: logoImage!)
-//            secondElement.frame = CGRect(x: 150, y: 150, width:100, height: logoImage!.size.height)
-            
-            item.add(element: firstElement)
+            item.add(elements: [firstElement, secondElement])
             
             let mediaProcessor = MediaProcessor()
-//            mediaProcessor.processElements(item: item) { [weak self] (result, error) in
-//                DispatchQueue.main.async {
-//                    self?.playVideo(url: result.processedUrl!, view: (self?.resultImageView)!)
-//                    PHPhotoLibrary.shared().performChanges({
-//                        PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: result.processedUrl!)
-//                    }, completionHandler: nil)
-//                }
-//            }
-            mediaProcessor.processElements(item: item) { [weak self](result, error) in
-                guard let blockSelf = self, let prossedURL = result.processedUrl else {
-                    return
-                }
+            mediaProcessor.processElements(item: item) { [weak self] (result, error) in
                 DispatchQueue.main.async {
-                    blockSelf.playVideo(url: prossedURL, view: blockSelf.resultImageView)
+                    self?.playVideo(url: result.processedUrl!, view: (self?.resultImageView)!)
                 }
-                
             }
         }
     }
@@ -139,23 +116,3 @@ let info = convertFromUIImagePickerControllerInfoKeyDictionary(info)
     }
 }
 
-
-// Helper function inserted by Swift 4.2 migrator.
-fileprivate func convertFromUIImagePickerControllerInfoKeyDictionary(_ input: [UIImagePickerController.InfoKey: Any]) -> [String: Any] {
-	return Dictionary(uniqueKeysWithValues: input.map {key, value in (key.rawValue, value)})
-}
-
-// Helper function inserted by Swift 4.2 migrator.
-fileprivate func convertFromUIImagePickerControllerInfoKey(_ input: UIImagePickerController.InfoKey) -> String {
-	return input.rawValue
-}
-extension UIImage {
-    
-    func alpha(_ value:CGFloat) -> UIImage {
-        UIGraphicsBeginImageContextWithOptions(size, false, scale)
-        draw(at: CGPoint.zero, blendMode: .normal, alpha: value)
-        let newImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        return newImage!
-    }
-}
